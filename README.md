@@ -30,12 +30,12 @@ source install/setup.bash
 Mic → audio_a_out
 ```bash
 # Terminal 1
-ros2 run audio_mic_pub_cpp mic_publisher_node --ros-args -p topic:=audio_a_out -p sample_rate:=16000 -p channels:=1 -p chunk_ms:=50
+ros2 run telephone_ros2 audio_publisher_node --ros-args -p topic:=audio_a_out -p sample_rate:=16000 -p channels:=1 -p chunk_ms:=50
 ```
 Play audio
 ```bash
 # Terminal 2
-ros2 run audio_mic_pub_cpp audio_player_node --ros-args -p topic:=audio_b_out -p sample_rate:=16000 -p channels:=1
+ros2 run telephone_ros2 audio_subscriber_node --ros-args -p topic:=audio_b_out -p sample_rate:=16000 -p channels:=1
 ```
 spectrum_viewer
 ```bash
@@ -46,12 +46,12 @@ ros2 run telephone_ros2 spectrum_viewer_node   --ros-args -p topic:=audio_b_out 
 Mic → audio_a_out
 ```bash
 # Terminal 1
-ros2 run audio_mic_pub_cpp mic_publisher_node --ros-args -p topic:=audio_b_out -p sample_rate:=16000 -p channels:=1 -p chunk_ms:=50
+ros2 run telephone_ros2 audio_publisher_node --ros-args -p topic:=audio_b_out -p sample_rate:=16000 -p channels:=1 -p chunk_ms:=50
 ```
 Play audio
 ```bash
 # Terminal 2
-ros2 run audio_mic_pub_cpp audio_player_node --ros-args -p topic:=audio_a_out -p sample_rate:=16000 -p channels:=1
+ros2 run telephone_ros2 audio_subscriber_node --ros-args -p topic:=audio_a_out -p sample_rate:=16000 -p channels:=1
 ```
 spectrum_viewer
 ```bash
