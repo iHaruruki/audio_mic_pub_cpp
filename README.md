@@ -1,3 +1,8 @@
+```bash
+sudo apt update
+sudo apt install portaudio19-dev
+```
+
 A
 ```bash
 # 端末 A1: マイク → audio_a_out
