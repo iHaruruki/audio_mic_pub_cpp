@@ -40,15 +40,23 @@ include_directories(
   ${OpenCV_INCLUDE_DIRS}
 )
 
-# Sending node (microphone → any topic)
-add_executable(audio_publisher_node src/audio_pub.cpp)
-ament_target_dependencies(audio_publisher_node rclcpp std_msgs)
-target_link_libraries(audio_publisher_node ${PORTAUDIO_LIBRARY})
+# ==== A 側 ====
+add_executable(publisher_a_node src/a_pub.cpp)
+ament_target_dependencies(publisher_a_node rclcpp std_msgs)
+target_link_libraries(publisher_a_node ${PORTAUDIO_LIBRARY})
 
-# Receiving node (any topic → speaker)
-add_executable(audio_subscriber_node src/audio_sub.cpp)
-ament_target_dependencies(audio_subscriber_node rclcpp std_msgs)
-target_link_libraries(audio_subscriber_node ${PORTAUDIO_LIBRARY})
+add_executable(subscriber_a_node src/a_sub.cpp)
+ament_target_dependencies(subscriber_a_node rclcpp std_msgs)
+target_link_libraries(subscriber_a_node ${PORTAUDIO_LIBRARY})
+
+# ==== B 側 ====
+add_executable(publisher_b_node src/b_pub.cpp)
+ament_target_dependencies(publisher_b_node rclcpp std_msgs)
+target_link_libraries(publisher_b_node ${PORTAUDIO_LIBRARY})
+
+add_executable(subscriber_b_node src/b_sub.cpp)
+ament_target_dependencies(subscriber_b_node rclcpp std_msgs)
+target_link_libraries(subscriber_b_node ${PORTAUDIO_LIBRARY})
 
 # Spectrum viewer node
 add_executable(spectrum_viewer_node src/spectrum_viewer.cpp)
@@ -60,8 +68,10 @@ add_executable(mixer_node src/mixer.cpp)
 ament_target_dependencies(mixer_node rclcpp std_msgs)
 
 install(TARGETS
-  audio_publisher_node
-  audio_subscriber_node
+  publisher_a_node
+  subscriber_a_node
+  publisher_b_node
+  subscriber_b_node
   spectrum_viewer_node
   mixer_node
   DESTINATION lib/${PROJECT_NAME}

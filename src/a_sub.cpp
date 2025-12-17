@@ -8,27 +8,23 @@
 
 #include <portaudio.h>
 
-class AudioPlayerNode : public rclcpp::Node
+class AudioPlayerANode : public rclcpp::Node
 {
 public:
-  AudioPlayerNode()
-  : Node("audio_player_node")
+  AudioPlayerANode()
+  : Node("audio_player_a_node")
   {
-    // Parameters
-    declare_parameter<std::string>("topic", "audio_out");   // Input topic
     declare_parameter<int>("sample_rate", 16000);
     declare_parameter<int>("channels", 1);
 
-    topic_       = get_parameter("topic").as_string();
     sample_rate_ = get_parameter("sample_rate").as_int();
     channels_    = get_parameter("channels").as_int();
 
     RCLCPP_INFO(
       get_logger(),
-      "Audio player: topic=%s, rate=%d Hz, channels=%d",
-      topic_.c_str(), sample_rate_, channels_);
+      "[A] Audio player: rate=%d Hz, channels=%d",
+      sample_rate_, channels_);
 
-    // PortAudio initialization
     PaError err = Pa_Initialize();
     if (err != paNoError) {
       RCLCPP_FATAL(get_logger(), "PortAudio init failed: %s", Pa_GetErrorText(err));
@@ -41,7 +37,7 @@ public:
       throw std::runtime_error("No default output device.");
     }
     const PaDeviceInfo *info = Pa_GetDeviceInfo(output_params_.device);
-    RCLCPP_INFO(get_logger(), "Using output device: %s", info->name);
+    RCLCPP_INFO(get_logger(), "[A] Using output device: %s", info->name);
 
     output_params_.channelCount = channels_;
     output_params_.sampleFormat = paInt16;
@@ -55,7 +51,7 @@ public:
       static_cast<double>(sample_rate_),
       paFramesPerBufferUnspecified,
       paNoFlag,
-      &AudioPlayerNode::paCallback,
+      &AudioPlayerANode::paCallback,
       this
     );
     if (err != paNoError) {
@@ -69,17 +65,17 @@ public:
       throw std::runtime_error("Pa_StartStream failed");
     }
 
-    // Subscribe to arbitrary topic
+    // B が送った音声トピックを購読
     subscription_ = create_subscription<std_msgs::msg::Int16MultiArray>(
-      topic_,
+      "audio_b_out",
       10,
-      std::bind(&AudioPlayerNode::audio_callback, this, std::placeholders::_1)
+      std::bind(&AudioPlayerANode::audio_callback, this, std::placeholders::_1)
     );
 
-    RCLCPP_INFO(get_logger(), "Audio player started.  Subscribing to %s", topic_.c_str());
+    RCLCPP_INFO(get_logger(), "[A] Audio player started. Subscribing to /audio_b_out");
   }
 
-  ~AudioPlayerNode() override
+  ~AudioPlayerANode() override
   {
     if (stream_) {
       Pa_StopStream(stream_);
@@ -87,7 +83,7 @@ public:
       stream_ = nullptr;
     }
     Pa_Terminate();
-    RCLCPP_INFO(get_logger(), "Audio player stopped.");
+    RCLCPP_INFO(get_logger(), "[A] Audio player stopped.");
   }
 
   static int paCallback(
@@ -101,7 +97,7 @@ public:
     (void)inputBuffer;
     (void)timeInfo;
     (void)statusFlags;
-    auto *node = static_cast<AudioPlayerNode*>(userData);
+    auto *node = static_cast<AudioPlayerANode*>(userData);
     return node->paCallbackImpl(outputBuffer, framesPerBuffer);
   }
 
@@ -119,7 +115,7 @@ public:
         out[i] = audio_buffer_[i];
       }
       for (size_t i = copy_n; i < samples_needed; ++i) {
-        out[i] = 0;  // silence
+        out[i] = 0;
       }
       audio_buffer_.erase(audio_buffer_.begin(), audio_buffer_.begin() + copy_n);
     } else {
@@ -132,24 +128,21 @@ public:
     return paContinue;
   }
 
-  void audio_callback(const std_msgs::msg::Int16MultiArray:: SharedPtr msg)
+  void audio_callback(const std_msgs::msg::Int16MultiArray::SharedPtr msg)
   {
     const auto & data = msg->data;
     if (data.empty()) return;
 
     std::lock_guard<std::mutex> lock(mutex_);
-    audio_buffer_.insert(audio_buffer_. end(), data.begin(), data.end());
+    audio_buffer_.insert(audio_buffer_.end(), data.begin(), data.end());
   }
 
 private:
-  std::string topic_;
   int sample_rate_;
   int channels_;
-
   rclcpp::Subscription<std_msgs::msg::Int16MultiArray>::SharedPtr subscription_;
   PaStream *stream_{nullptr};
   PaStreamParameters output_params_;
-
   std::vector<int16_t> audio_buffer_;
   std::mutex mutex_;
 };
@@ -157,7 +150,7 @@ private:
 int main(int argc, char * argv[])
 {
   rclcpp::init(argc, argv);
-  auto node = std:: make_shared<AudioPlayerNode>();
+  auto node = std::make_shared<AudioPlayerANode>();
   rclcpp::spin(node);
   rclcpp::shutdown();
   return 0;

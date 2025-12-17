@@ -11,47 +11,48 @@
 class MicPublisherNode : public rclcpp::Node
 {
 public:
-  MicPublisherNode()
-  : Node("mic_publisher_node")
+  MicPublisherNode(const rclcpp::NodeOptions & options = rclcpp::NodeOptions())
+  : Node("mic_publisher_node", options)
   {
-    // Parameters
-    declare_parameter<std::string>("topic", "audio_out");  // Output topic
+    // パラメータ
     declare_parameter<int>("sample_rate", 16000);
     declare_parameter<int>("channels", 1);
     declare_parameter<int>("chunk_ms", 50);
+    declare_parameter<std::string>("topic_name", "audio_raw");
 
-    topic_       = get_parameter("topic").as_string();
     sample_rate_ = get_parameter("sample_rate").as_int();
     channels_    = get_parameter("channels").as_int();
     chunk_ms_    = get_parameter("chunk_ms").as_int();
+    topic_name_  = get_parameter("topic_name").as_string();
 
     chunk_samples_ = static_cast<int>(sample_rate_ * chunk_ms_ / 1000);
 
+    // publish 先トピックをパラメータで切り替え
     publisher_ = create_publisher<std_msgs::msg::Int16MultiArray>(
-      topic_, 10);
+      topic_name_, 10);
 
     RCLCPP_INFO(
       get_logger(),
-      "Mic publisher:  topic=%s, rate=%d Hz, channels=%d, chunk=%d ms (%d samples)",
-      topic_.c_str(), sample_rate_, channels_, chunk_ms_, chunk_samples_);
+      "Mic publisher: node_name=%s, topic=%s, rate=%d Hz, channels=%d, chunk=%d ms (%d samples)",
+      get_name(), topic_name_.c_str(), sample_rate_, channels_, chunk_ms_, chunk_samples_);
 
-    // PortAudio initialization
+    // PortAudio 初期化
     PaError err = Pa_Initialize();
     if (err != paNoError) {
       RCLCPP_FATAL(get_logger(), "PortAudio init failed: %s", Pa_GetErrorText(err));
       throw std::runtime_error("PortAudio init failed");
     }
 
-    input_params_. device = Pa_GetDefaultInputDevice();
+    input_params_.device = Pa_GetDefaultInputDevice();
     if (input_params_.device == paNoDevice) {
       RCLCPP_FATAL(get_logger(), "No default input device.");
       throw std::runtime_error("No default input device.");
     }
     const PaDeviceInfo *info = Pa_GetDeviceInfo(input_params_.device);
-    RCLCPP_INFO(get_logger(), "Using input device:  %s", info->name);
+    RCLCPP_INFO(get_logger(), "Using input device: %s", info->name);
 
     input_params_.channelCount = channels_;
-    input_params_.sampleFormat = paInt16;  // 16bit PCM
+    input_params_.sampleFormat = paInt16; // 16bit PCM
     input_params_.suggestedLatency = info->defaultLowInputLatency;
     input_params_.hostApiSpecificStreamInfo = nullptr;
 
@@ -90,6 +91,7 @@ public:
     RCLCPP_INFO(get_logger(), "Mic publisher stopped.");
   }
 
+  // PortAudio コールバック（静的）
   static int paCallback(
     const void *inputBuffer,
     void *outputBuffer,
@@ -105,6 +107,7 @@ public:
     return node->paCallbackImpl(inputBuffer, framesPerBuffer);
   }
 
+  // 実際の処理
   int paCallbackImpl(const void *inputBuffer, unsigned long framesPerBuffer)
   {
     if (inputBuffer == nullptr) {
@@ -116,17 +119,18 @@ public:
 
     std_msgs::msg::Int16MultiArray msg;
     msg.data.assign(in, in + sample_count);
+
     publisher_->publish(msg);
 
     return paContinue;
   }
 
 private:
-  std::string topic_;
   int sample_rate_;
   int channels_;
   int chunk_ms_;
   int chunk_samples_;
+  std::string topic_name_;
 
   rclcpp::Publisher<std_msgs::msg::Int16MultiArray>::SharedPtr publisher_;
   PaStream *stream_{nullptr};
@@ -136,6 +140,7 @@ private:
 int main(int argc, char * argv[])
 {
   rclcpp::init(argc, argv);
+  // コマンドラインリマップで node 名を変えられるように NodeOptions で作成
   auto node = std::make_shared<MicPublisherNode>();
   rclcpp::spin(node);
   rclcpp::shutdown();
